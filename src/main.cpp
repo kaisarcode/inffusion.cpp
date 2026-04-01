@@ -21,17 +21,22 @@
 #include <string.h>
 #include <thread>
 #include <time.h>
+#include <vector>
 
 #ifdef _WIN32
 #include <direct.h>
+#include <process.h>
 #else
 #include <unistd.h>
 #endif
 
 #define STB_IMAGE_IMPLEMENTATION
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include <thirdparty/stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <thirdparty/stb_image_write.h>
+#pragma GCC diagnostic pop
 
 #define INFUSSION_DEFAULT_WIDTH 1024
 #define INFUSSION_DEFAULT_HEIGHT 1024
@@ -42,8 +47,6 @@
 #define INFUSSION_DEFAULT_METHOD "euler_a"
 #define INFUSSION_DEFAULT_GUIDANCE 3.5f
 #define INFUSSION_DEFAULT_CLIP_SKIP 1
-#define INFUSSION_MAX_LORA 32
-
 typedef enum {
     INFUSSION_COMMAND_NONE = 0,
     INFUSSION_COMMAND_INFER
@@ -59,14 +62,12 @@ typedef struct {
     inffusion_type type;
     const char *model_path;
     const char *negative_prompt;
-    const char *ref_paths[INFUSSION_MAX_LORA];
-    int ref_count;
+    std::vector<const char *> ref_paths;
     const char *output_path;
     const char *vae_path;
     const char *sample_method;
-    const char *lora_paths[INFUSSION_MAX_LORA];
-    float lora_scales[INFUSSION_MAX_LORA];
-    int lora_count;
+    std::vector<const char *> lora_paths;
+    std::vector<float> lora_scales;
     int width;
     int height;
     int steps;
@@ -171,7 +172,7 @@ static int inffusion_fail_usage(const char *message) {
 static void inffusion_config_init(inffusion_config *config) {
     unsigned int threads = std::thread::hardware_concurrency();
 
-    memset(config, 0, sizeof(*config));
+    *config = {};
     config->type = INFUSSION_TYPE_TEXT;
     config->width = INFUSSION_DEFAULT_WIDTH;
     config->height = INFUSSION_DEFAULT_HEIGHT;
@@ -183,9 +184,6 @@ static void inffusion_config_init(inffusion_config *config) {
     config->seed = INFUSSION_DEFAULT_SEED;
     config->sample_method = INFUSSION_DEFAULT_METHOD;
     config->guidance = INFUSSION_DEFAULT_GUIDANCE;
-    for (int i = 0; i < INFUSSION_MAX_LORA; ++i) {
-        config->lora_scales[i] = 1.0f;
-    }
 }
 
 /**
@@ -299,7 +297,7 @@ static int inffusion_validate(const inffusion_config *config) {
     if (config->command != INFUSSION_COMMAND_INFER) {
         return inffusion_fail_usage("Missing command. Use 'infer'.");
     }
-    if (config->type == INFUSSION_TYPE_IMAGE && config->ref_count <= 0) {
+    if (config->type == INFUSSION_TYPE_IMAGE && config->ref_paths.empty()) {
         return inffusion_fail_usage("infer --type image requires at least one --ref.");
     }
     if (config->output_path && inffusion_validate_output_path(config->output_path) != 0) {
@@ -360,8 +358,7 @@ static int inffusion_parse_args(int argc, char **argv, inffusion_config *config)
             config->negative_prompt = argv[i];
         } else if (strcmp(argv[i], "--ref") == 0) {
             if (++i >= argc) return inffusion_fail_usage("Missing value for --ref.");
-            if (config->ref_count >= INFUSSION_MAX_LORA) return inffusion_fail_usage("Too many --ref entries.");
-            config->ref_paths[config->ref_count++] = argv[i];
+            config->ref_paths.push_back(argv[i]);
         } else if (strcmp(argv[i], "--output") == 0) {
             if (++i >= argc) return inffusion_fail_usage("Missing value for --output.");
             config->output_path = argv[i];
@@ -391,14 +388,12 @@ static int inffusion_parse_args(int argc, char **argv, inffusion_config *config)
             if (++i >= argc || inffusion_parse_float(argv[i], &config->guidance) != 0) return inffusion_fail_usage("Invalid value for --guidance.");
         } else if (strcmp(argv[i], "--lora") == 0) {
             if (++i >= argc) return inffusion_fail_usage("Missing value for --lora.");
-            if (config->lora_count >= INFUSSION_MAX_LORA) return inffusion_fail_usage("Too many --lora entries.");
-            config->lora_paths[config->lora_count] = argv[i];
-            config->lora_scales[config->lora_count] = 1.0f;
-            ++config->lora_count;
+            config->lora_paths.push_back(argv[i]);
+            config->lora_scales.push_back(1.0f);
         } else if (strcmp(argv[i], "--lora-scale") == 0) {
             if (++i >= argc) return inffusion_fail_usage("Missing value for --lora-scale.");
-            if (config->lora_count <= 0) return inffusion_fail_usage("--lora-scale requires a previous --lora.");
-            if (inffusion_parse_float(argv[i], &config->lora_scales[config->lora_count - 1]) != 0) return inffusion_fail_usage("Invalid value for --lora-scale.");
+            if (config->lora_scales.empty()) return inffusion_fail_usage("--lora-scale requires a previous --lora.");
+            if (inffusion_parse_float(argv[i], &config->lora_scales.back()) != 0) return inffusion_fail_usage("Invalid value for --lora-scale.");
         } else if (strcmp(argv[i], "--preview") == 0) {
             config->preview = true;
         } else if (strcmp(argv[i], "--vae-tiling") == 0) {
@@ -483,7 +478,7 @@ static int inffusion_make_output_path(char **out_path) {
         return 1;
     }
     if (snprintf(relative_name, sizeof(relative_name), "inffusion-%lld-%lu.png",
-        (long long)now, (unsigned long)GetCurrentProcessId()) < 0) {
+        (long long)now, (unsigned long)_getpid()) < 0) {
         return 1;
     }
 #else
@@ -506,7 +501,7 @@ static int inffusion_make_output_path(char **out_path) {
  * Resolves one output path to an absolute printable path.
  * @param path Input path.
  * @param fallback Output fallback owner.
- * @return const char * Absolute path when available, otherwise the original path.
+ * @return const char * Absolute path when available, or the original path.
  */
 static const char *inffusion_resolve_output_path(const char *path, char *fallback) {
 #ifdef _WIN32
@@ -677,7 +672,7 @@ static int inffusion_run_infer(const inffusion_config *config) {
     sd_image_t mask_image;
     sd_image_t *images = NULL;
     uint8_t *mask_data = NULL;
-    sd_lora_t loras[INFUSSION_MAX_LORA];
+    std::vector<sd_lora_t> loras;
     int write_ok = 0;
 
     memset(&init_image, 0, sizeof(init_image));
@@ -697,7 +692,7 @@ static int inffusion_run_infer(const inffusion_config *config) {
         }
         output_path = generated_output_path;
     }
-    if (config->type == INFUSSION_TYPE_IMAGE && inffusion_load_image(config->ref_paths[0], &init_image) != 0) {
+    if (config->type == INFUSSION_TYPE_IMAGE && inffusion_load_image(config->ref_paths.front(), &init_image) != 0) {
         free(prompt);
         free(generated_output_path);
         return inffusion_fail("Unable to load the base image.");
@@ -753,14 +748,15 @@ static int inffusion_run_infer(const inffusion_config *config) {
         img_params.height = (int)init_image.height;
     }
 
-    if (config->lora_count > 0) {
-        for (int i = 0; i < config->lora_count; ++i) {
+    if (!config->lora_paths.empty()) {
+        loras.resize(config->lora_paths.size());
+        for (size_t i = 0; i < config->lora_paths.size(); ++i) {
             loras[i].path = config->lora_paths[i];
             loras[i].multiplier = config->lora_scales[i];
             loras[i].is_high_noise = false;
         }
-        img_params.loras = loras;
-        img_params.lora_count = (uint32_t)config->lora_count;
+        img_params.loras = loras.data();
+        img_params.lora_count = (uint32_t)loras.size();
     }
 
     sd_set_log_callback(inffusion_log_cb, NULL);
