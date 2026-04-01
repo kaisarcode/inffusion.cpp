@@ -1,9 +1,9 @@
 ![inffusion](./logo.png)
 
-# inffusion - Raw stable-diffusion.cpp core binary
+# inffusion - Raw stable-diffusion cpp core binary
 
 `inffusion` is a small autonomous and portable base binary built directly on
-top of `stable-diffusion.cpp`.
+top of `stable-diffusion`.
 
 `inffusion` uses a compact self-contained layout with vendored native
 dependencies, native installers, and a raw shell-facing interface.
