@@ -87,7 +87,7 @@ printf 'A brutalist city at sunset.' | inffusion infer \
 | `--method` | Sampling method | `euler_a` |
 | `--vae` | External VAE path | `NULL` |
 | `--clip-skip` | CLIP skip count | `1` |
-| `--lora` | LoRA adapter path | `NULL` |
+| `--lora` | LoRA adapter path, repeatable | `NULL` |
 | `--lora-scale` | Scale for the previous LoRA entry | `1.0` |
 | `--guidance` | Distilled guidance scale | `3.5` |
 | `--preview` | Update the output image during generation | `false` |
@@ -104,8 +104,7 @@ printf 'A brutalist city at sunset.' | inffusion infer \
 
 Layout:
 - `lib/inc` contains the headers used by the build
-- `lib/obj` contains the shared runtime libraries used for the final link on
-  each supported target
+- `lib/obj` contains the shared runtime libraries used for the final link on each supported target
 
 ## Local Build
 
