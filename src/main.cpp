@@ -47,6 +47,7 @@
 #define INFUSSION_DEFAULT_METHOD "euler_a"
 #define INFUSSION_DEFAULT_GUIDANCE 3.5f
 #define INFUSSION_DEFAULT_CLIP_SKIP 1
+#define INFUSSION_VERSION "1.0.0"
 typedef enum {
     INFUSSION_COMMAND_NONE = 0,
     INFUSSION_COMMAND_INFER
@@ -140,7 +141,16 @@ static void inffusion_help(void) {
     printf("  --cpu-offload        Offload weights to RAM\n");
     printf("  --clip-on-cpu        Keep CLIP on CPU\n");
     printf("  --vae-on-cpu         Keep VAE on CPU\n");
+    printf("  --version, -v        Show version\n");
     printf("  --help               Show help\n");
+}
+
+/**
+ * Prints the binary version.
+ * @return void
+ */
+static void inffusion_version(void) {
+    printf("inffusion %s\n", INFUSSION_VERSION);
 }
 
 /**
@@ -331,6 +341,10 @@ static int inffusion_parse_args(int argc, char **argv, inffusion_config *config)
     if (argc < 2) {
         return inffusion_fail_usage("Missing command. Use 'infer'.");
     }
+    if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0) {
+        inffusion_version();
+        return 2;
+    }
     if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
         inffusion_help();
         return 2;
@@ -346,6 +360,9 @@ static int inffusion_parse_args(int argc, char **argv, inffusion_config *config)
     for (i = 2; i < argc; ++i) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             inffusion_help();
+            return 2;
+        } else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
+            inffusion_version();
             return 2;
         } else if (strcmp(argv[i], "--model") == 0) {
             if (++i >= argc) return inffusion_fail_usage("Missing value for --model.");

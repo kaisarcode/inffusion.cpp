@@ -33,6 +33,8 @@ CXXFLAGS = -Wall -Wextra -Werror -O3 -std=c++17 -I$(INC_DIR) $(EXTRA_CXXFLAGS)
 SYSLIBS_UNIX = -pthread -lm
 SYSLIBS_WIN = -lws2_32 -ladvapi32 -Wl,--no-insert-timestamp
 WININSTALL = -lurlmon -lshell32 -ladvapi32 -lshlwapi -lcomctl32 -Wl,--no-insert-timestamp
+LOCAL_RPATH = -Wl,-rpath,'$$$$ORIGIN/../../lib/obj/stable-diffusion.cpp/$(ARCH)'
+INSTALL_RPATH = -Wl,-rpath,/usr/local/lib/kaisarcode/obj/stable-diffusion.cpp/$(ARCH)
 
 .PHONY: all clean build_arch x86_64 aarch64 arm64-v8a win64
 
@@ -73,15 +75,13 @@ build_arch:
 	$(eval UNIX_DEPS = $(SHARED_SD))
 	$(eval WIN_DEPS = $(WIN_SD))
 	$(eval DEPS = $(if $(findstring win64,$(ARCH)),$(WIN_DEPS),$(UNIX_DEPS)))
+	$(eval RPATH_FLAGS = $(if $(findstring win64,$(ARCH)),,$(LOCAL_RPATH) $(INSTALL_RPATH)))
 	@for dep in $(DEPS); do \
 		test -f "$$dep" || { echo "[ERROR] Missing $$dep."; exit 1; }; \
 	done
 	$(eval OBJS = $(BIN_ROOT)/$(ARCH)/main.o)
 	$(MAKE) $(OBJS) ARCH=$(ARCH) CXX="$(CXX)" EXT="$(EXT)" EXTRA_CXXFLAGS="$(EXTRA_CXXFLAGS)"
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(BIN_ROOT)/$(ARCH)/$(NAME)$(EXT) $(if $(findstring win64,$(ARCH)),$(WIN_DEPS) $(SYSLIBS_WIN),$(UNIX_DEPS) $(SYSLIBS_UNIX))
-	@if [ "$(ARCH)" != "win64" ] && command -v patchelf >/dev/null 2>&1; then \
-		patchelf --remove-rpath $(BIN_ROOT)/$(ARCH)/$(NAME)$(EXT) || true; \
-	fi
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(BIN_ROOT)/$(ARCH)/$(NAME)$(EXT) $(if $(findstring win64,$(ARCH)),$(WIN_DEPS) $(SYSLIBS_WIN),$(UNIX_DEPS) $(SYSLIBS_UNIX)) $(RPATH_FLAGS)
 
 $(BIN_ROOT)/$(ARCH)/%.o: src/%.cpp
 	mkdir -p $(BIN_ROOT)/$(ARCH)
