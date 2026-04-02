@@ -10,7 +10,8 @@ set -e
 
 APP_ID="inffusion"
 REPO_ID="inffusion.cpp"
-CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/master"
+RELEASE_TAG="v1.0.0"
+CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/${RELEASE_TAG}"
 INSTALLER_URL="${CORE_REPO_ROOT}/install.sh"
 SYS_BIN_DIR="/usr/local/bin"
 SYS_APP_DIR="/usr/local/lib/kaisarcode/apps"
@@ -146,7 +147,7 @@ install_runtime_wrapper() {
     printf '%s\n' \
         '#!/bin/bash' \
         'set -e' \
-        "export LD_LIBRARY_PATH=\"$SYS_DEP_DIR/obj/llama.cpp/$arch:$SYS_DEP_DIR/obj/ggml/$arch\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}\"" \
+        "export LD_LIBRARY_PATH=\"$SYS_DEP_DIR/obj/stable-diffusion.cpp/$arch\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}\"" \
         "exec \"$SYS_APP_DIR/$APP_ID/$arch/$APP_ID\" \"\$@\"" \
         | tee "$wrapper_path" >/dev/null
     chmod 0755 "$wrapper_path"
@@ -204,14 +205,8 @@ stage_local_assets() {
     cuda_enabled="$3"
 
     stage_local_asset "./bin/$arch/$APP_ID" "$stage_dir/bin/$APP_ID"
-    stage_local_asset "./lib/obj/llama.cpp/$arch/libllama.so" "$stage_dir/llama.cpp/$arch/libllama.so"
-    stage_local_asset "./lib/obj/llama.cpp/$arch/libmtmd.so" "$stage_dir/llama.cpp/$arch/libmtmd.so"
-    stage_local_asset "./lib/obj/ggml/$arch/libggml.so" "$stage_dir/ggml/$arch/libggml.so"
-    stage_local_asset "./lib/obj/ggml/$arch/libggml-base.so" "$stage_dir/ggml/$arch/libggml-base.so"
-    stage_local_asset "./lib/obj/ggml/$arch/libggml-cpu.so" "$stage_dir/ggml/$arch/libggml-cpu.so"
-    if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" = true ]; then
-        stage_local_asset "./lib/obj/ggml/$arch/libggml-cuda.so" "$stage_dir/ggml/$arch/libggml-cuda.so"
-    fi
+    stage_local_asset "./lib/obj/stable-diffusion.cpp/$arch/libstable-diffusion.so" \
+        "$stage_dir/stable-diffusion.cpp/$arch/libstable-diffusion.so"
 }
 
 # Downloads remote assets into a staging directory.
@@ -223,16 +218,10 @@ stage_remote_assets() {
     stage_dir="$2"
     cuda_enabled="$3"
 
-    mkdir -p "$stage_dir/bin" "$stage_dir/llama.cpp/$arch" "$stage_dir/ggml/$arch"
+    mkdir -p "$stage_dir/bin" "$stage_dir/stable-diffusion.cpp/$arch"
     download_asset "$CORE_REPO_ROOT/bin/$arch/$APP_ID" "$stage_dir/bin/$APP_ID"
-    download_asset "$CORE_REPO_ROOT/lib/obj/llama.cpp/$arch/libllama.so" "$stage_dir/llama.cpp/$arch/libllama.so"
-    download_asset "$CORE_REPO_ROOT/lib/obj/llama.cpp/$arch/libmtmd.so" "$stage_dir/llama.cpp/$arch/libmtmd.so"
-    download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml.so" "$stage_dir/ggml/$arch/libggml.so"
-    download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml-base.so" "$stage_dir/ggml/$arch/libggml-base.so"
-    download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml-cpu.so" "$stage_dir/ggml/$arch/libggml-cpu.so"
-    if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" = true ]; then
-        download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml-cuda.so" "$stage_dir/ggml/$arch/libggml-cuda.so"
-    fi
+    download_asset "$CORE_REPO_ROOT/lib/obj/stable-diffusion.cpp/$arch/libstable-diffusion.so" \
+        "$stage_dir/stable-diffusion.cpp/$arch/libstable-diffusion.so"
 }
 
 # Prints the resolved installation plan from the staged payload.
@@ -266,8 +255,7 @@ print_install_plan() {
     printf "  Total size: %s\n" "$(format_size "$total_size")"
     printf "  Install path: %s/%s/%s/%s\n" "$SYS_APP_DIR" "$APP_ID" "$arch" "$APP_ID"
     printf "  Wrapper path: %s/%s\n" "$SYS_BIN_DIR" "$APP_ID"
-    printf "  llama.cpp path: %s/obj/llama.cpp/%s\n" "$SYS_DEP_DIR" "$arch"
-    printf "  ggml path: %s/obj/ggml/%s\n" "$SYS_DEP_DIR" "$arch"
+        printf "  stable-diffusion.cpp path: %s/obj/stable-diffusion.cpp/%s\n" "$SYS_DEP_DIR" "$arch"
 }
 
 # Confirms the installation plan with the user.
@@ -312,8 +300,7 @@ main() {
     trap 'rm -rf "$stage_dir"' EXIT
 
     if [ "$local_mode" = true ]; then
-        [ -d "./lib/obj/llama.cpp/$arch" ] || fail "Local llama.cpp dependencies not found for $arch."
-        [ -d "./lib/obj/ggml/$arch" ] || fail "Local ggml dependencies not found for $arch."
+        [ -d "./lib/obj/stable-diffusion.cpp/$arch" ] || fail "Local stable-diffusion.cpp dependencies not found for $arch."
         stage_local_assets "$arch" "$stage_dir" "$cuda_enabled"
     else
         stage_remote_assets "$arch" "$stage_dir" "$cuda_enabled"
@@ -322,8 +309,7 @@ main() {
     print_install_plan "$arch" "$mode" "$stage_dir" "$cuda_enabled"
     confirm_install
     printf ">>> Installing %s runtime dependencies...\n" "$APP_ID"
-    install_runtime_deps "$stage_dir" "llama.cpp" "$arch"
-    install_runtime_deps "$stage_dir" "ggml" "$arch"
+    install_runtime_deps "$stage_dir" "stable-diffusion.cpp" "$arch"
     printf ">>> Installing %s binary...\n" "$APP_ID"
     chmod 0755 "$stage_dir/bin/$APP_ID"
     install_runtime_binary "$stage_dir/bin" "$arch"
