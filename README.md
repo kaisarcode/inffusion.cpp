@@ -107,6 +107,40 @@ Layout:
 - `lib/inc` contains the headers used by the build
 - `lib/obj` contains the shared runtime libraries used for the final link on each supported target
 
+## Install
+
+Install the current-architecture production binary on Linux:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0/install.sh | bash
+```
+
+Remove the installed application on Linux:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0/uninstall.sh | bash
+```
+
+Remove the installed application plus shared runtime dependencies on Linux:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0/uninstall.sh | bash -s -- --deps
+```
+
+Model files are not installed by `install.sh`. You must provide compatible
+Stable Diffusion model files yourself and pass them through `--model`.
+
+## Windows Installation
+
+`inffusion` also ships with a dedicated `install.exe`.
+
+Windows removal is handled by `uninstall.exe`, which prompts whether shared
+runtime DLLs should also be removed.
+
+## Windows Uninstall
+
+`inffusion` also ships with a dedicated `uninstall.exe`.
+
 ## Local Build
 
 ```bash
@@ -115,6 +149,12 @@ make aarch64
 make arm64-v8a
 make win64
 make all
+```
+
+## Testing
+
+```bash
+./test.sh
 ```
 
 ---

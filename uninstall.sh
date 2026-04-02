@@ -10,7 +10,8 @@ set -e
 
 APP_ID="inffusion"
 REPO_ID="inffusion.cpp"
-CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/master"
+RELEASE_TAG="v1.0.0"
+CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/${RELEASE_TAG}"
 UNINSTALLER_URL="${CORE_REPO_ROOT}/uninstall.sh"
 SYS_BIN_DIR="/usr/local/bin"
 SYS_APP_DIR="/usr/local/lib/kaisarcode/apps"
@@ -116,8 +117,7 @@ print_uninstall_plan() {
     printf "  Wrapper path: %s/%s\n" "$SYS_BIN_DIR" "$APP_ID"
     printf "  App path: %s/%s/%s\n" "$SYS_APP_DIR" "$APP_ID" "$arch"
     if [ "$remove_deps" = true ]; then
-        printf "  llama.cpp path: %s/obj/llama.cpp/%s\n" "$SYS_DEP_DIR" "$arch"
-        printf "  ggml path: %s/obj/ggml/%s\n" "$SYS_DEP_DIR" "$arch"
+        printf "  stable-diffusion.cpp path: %s/obj/stable-diffusion.cpp/%s\n" "$SYS_DEP_DIR" "$arch"
     fi
 }
 
@@ -138,10 +138,8 @@ uninstall_app() {
 uninstall_deps() {
     arch="$1"
 
-    remove_if_exists "$SYS_DEP_DIR/obj/llama.cpp/$arch"
-    remove_if_exists "$SYS_DEP_DIR/obj/ggml/$arch"
-    remove_dir_if_empty "$SYS_DEP_DIR/obj/llama.cpp"
-    remove_dir_if_empty "$SYS_DEP_DIR/obj/ggml"
+    remove_if_exists "$SYS_DEP_DIR/obj/stable-diffusion.cpp/$arch"
+    remove_dir_if_empty "$SYS_DEP_DIR/obj/stable-diffusion.cpp"
     remove_dir_if_empty "$SYS_DEP_DIR/obj"
 }
 
