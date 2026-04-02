@@ -19,7 +19,7 @@
 
 #define KC_INSTALLER_TITLE "inffusion installer"
 #define KC_INSTALL_ROOT_DEFAULT "C:\\Program Files\\KaisarCode"
-#define KC_REPO_ROOT "https://media.githubusercontent.com/media/kaisarcode/inffusion.cpp/v1.0.0"
+#define KC_REPO_ROOT "https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0"
 #define KC_MAX_FILES 16
 
 struct kc_file_entry {
