@@ -96,6 +96,7 @@ printf 'A brutalist city at sunset.' | inffusion infer \
 | `--cpu-offload` | Offload weights to RAM | `false` |
 | `--clip-on-cpu` | Keep CLIP on CPU | `false` |
 | `--vae-on-cpu` | Keep VAE on CPU | `false` |
+| `--version`, `-v` | Show binary version | `false` |
 
 ## Dependencies
 
