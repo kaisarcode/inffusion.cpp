@@ -12,6 +12,13 @@ SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname "$0")" && pwd)
 APP_ROOT="$SCRIPT_DIR"
 MODEL_PATH="${INFFUSION_MODEL:-}"
 
+# Returns success when one version string matches the public CLI format.
+# @param $1 Version output.
+# @return 0 on success.
+is_valid_version_output() {
+    printf '%s\n' "$1" | grep -Eq '^inffusion [0-9]+\.[0-9]+\.[0-9]+$'
+}
+
 # Prints one failure and exits.
 # @param $1 Failure message.
 # @return Does not return.
@@ -41,7 +48,7 @@ test_setup() {
     export INFFUSION_BIN="$APP_ROOT/bin/$ARCH/inffusion$EXT"
     [ -x "$INFFUSION_BIN" ] || fail "Binary not found at $INFFUSION_BIN."
     VERSION_OUT=$("$INFFUSION_BIN" --version)
-    [ "$VERSION_OUT" = "inffusion 1.0.1" ] || fail "Direct binary runtime resolution failed."
+    is_valid_version_output "$VERSION_OUT" || fail "Direct binary runtime resolution failed."
     if [ "$(uname -s)" = "Linux" ]; then
         export LD_LIBRARY_PATH="$APP_ROOT/lib/obj/stable-diffusion.cpp/$ARCH:$APP_ROOT/lib/obj/ggml/$ARCH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
         if ldd "$INFFUSION_BIN" | grep -q 'not found'; then
@@ -64,9 +71,9 @@ test_general() {
     pass "General: Help output verified."
 
     VERSION_OUT=$("$INFFUSION_BIN" --version)
-    [ "$VERSION_OUT" = "inffusion 1.0.1" ] || fail "Version output failed."
+    is_valid_version_output "$VERSION_OUT" || fail "Version output failed."
     VERSION_OUT=$("$INFFUSION_BIN" infer --version)
-    [ "$VERSION_OUT" = "inffusion 1.0.1" ] || fail "Command-level version output failed."
+    is_valid_version_output "$VERSION_OUT" || fail "Command-level version output failed."
     pass "General: Version output verified."
 
     if "$INFFUSION_BIN" >/dev/null 2>&1; then fail "Missing command should fail."; fi
