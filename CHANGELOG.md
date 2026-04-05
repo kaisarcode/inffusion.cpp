@@ -15,3 +15,6 @@ and this project adheres to [KaisarCode Standards](https://kaisarcode.com).
 - Updated installers and runtime packaging to deploy and resolve both vendored library trees.
 - Standardized linker flags and runtime search paths for portable vendored execution.
 - Updated the project release metadata to `v1.0.1`.
+
+### Notes
+- `win64` packaging and CLI startup are available, but full image generation under `wine` is still pending validation.

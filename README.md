@@ -135,6 +135,10 @@ Stable Diffusion model files yourself and pass them through `--model`.
 
 `inffusion` also ships with a dedicated `install.exe`.
 
+Current status:
+- `win64` builds and starts correctly.
+- Full image generation under `wine` is not validated yet.
+
 Windows removal is handled by `uninstall.exe`, which prompts whether shared
 runtime DLLs should also be removed.
 

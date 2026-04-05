@@ -131,10 +131,8 @@ install_runtime_deps() {
     stack="$2"
     arch="$3"
     mkdir -p "$SYS_DEP_DIR/obj/$stack/$arch"
-    find "$SYS_DEP_DIR/obj/$stack/$arch" -maxdepth 1 -type f -delete
-    find "$src_dir/$stack/$arch" -maxdepth 1 -type f | while IFS= read -r dep_path; do
-        install -m 0644 "$dep_path" "$SYS_DEP_DIR/obj/$stack/$arch/$(basename "$dep_path")"
-    done
+    find "$SYS_DEP_DIR/obj/$stack/$arch" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    cp -a "$src_dir/$stack/$arch/." "$SYS_DEP_DIR/obj/$stack/$arch/"
 }
 
 # Installs one runtime wrapper in the global bin directory.
@@ -205,13 +203,11 @@ stage_local_assets() {
     cuda_enabled="$3"
 
     stage_local_asset "./bin/$arch/$APP_ID" "$stage_dir/bin/$APP_ID"
-    stage_local_asset "./lib/obj/stable-diffusion.cpp/$arch/libstable-diffusion.so" \
-        "$stage_dir/stable-diffusion.cpp/$arch/libstable-diffusion.so"
-    stage_local_asset "./lib/obj/ggml/$arch/libggml.so" "$stage_dir/ggml/$arch/libggml.so"
-    stage_local_asset "./lib/obj/ggml/$arch/libggml-base.so" "$stage_dir/ggml/$arch/libggml-base.so"
-    stage_local_asset "./lib/obj/ggml/$arch/libggml-cpu.so" "$stage_dir/ggml/$arch/libggml-cpu.so"
-    if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" = true ]; then
-        stage_local_asset "./lib/obj/ggml/$arch/libggml-cuda.so" "$stage_dir/ggml/$arch/libggml-cuda.so"
+    mkdir -p "$stage_dir/stable-diffusion.cpp/$arch" "$stage_dir/ggml/$arch"
+    cp -a "./lib/obj/stable-diffusion.cpp/$arch/." "$stage_dir/stable-diffusion.cpp/$arch/"
+    cp -a "./lib/obj/ggml/$arch/." "$stage_dir/ggml/$arch/"
+    if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" != true ]; then
+        rm -f "$stage_dir/ggml/$arch/libggml-cuda.so"
     fi
 }
 
@@ -226,14 +222,49 @@ stage_remote_assets() {
 
     mkdir -p "$stage_dir/bin" "$stage_dir/stable-diffusion.cpp/$arch" "$stage_dir/ggml/$arch"
     download_asset "$CORE_REPO_ROOT/bin/$arch/$APP_ID" "$stage_dir/bin/$APP_ID"
-    download_asset "$CORE_REPO_ROOT/lib/obj/stable-diffusion.cpp/$arch/libstable-diffusion.so" \
-        "$stage_dir/stable-diffusion.cpp/$arch/libstable-diffusion.so"
-    download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml.so" "$stage_dir/ggml/$arch/libggml.so"
-    download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml-base.so" "$stage_dir/ggml/$arch/libggml-base.so"
-    download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml-cpu.so" "$stage_dir/ggml/$arch/libggml-cpu.so"
-    if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" = true ]; then
-        download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/libggml-cuda.so" "$stage_dir/ggml/$arch/libggml-cuda.so"
+    find_remote_assets "stable-diffusion.cpp" "$arch" | while IFS= read -r asset_name; do
+        [ -n "$asset_name" ] || continue
+        download_asset "$CORE_REPO_ROOT/lib/obj/stable-diffusion.cpp/$arch/$asset_name" \
+            "$stage_dir/stable-diffusion.cpp/$arch/$asset_name"
+    done
+    find_remote_assets "ggml" "$arch" | while IFS= read -r asset_name; do
+        [ -n "$asset_name" ] || continue
+        if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" != true ] && [ "$asset_name" = "libggml-cuda.so" ]; then
+            continue
+        fi
+        download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/$asset_name" \
+            "$stage_dir/ggml/$arch/$asset_name"
+    done
+}
+
+# Lists one remote vendor directory using the GitHub contents API.
+# @param $1 Stack name.
+# @param $2 Architecture name.
+# @return Writes one filename per line.
+find_remote_assets() {
+    stack="$1"
+    arch="$2"
+    api_url="https://api.github.com/repos/kaisarcode/${REPO_ID}/contents/lib/obj/${stack}/${arch}?ref=${RELEASE_TAG}"
+    command -v python3 >/dev/null 2>&1 || fail "python3 is required."
+    response_path=$(mktemp) || fail "Unable to allocate temporary response file."
+    if ! wget -qO "$response_path" "$api_url"; then
+        rm -f "$response_path"
+        fail_unavailable "$api_url"
     fi
+    python3 - "$response_path" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+if not isinstance(data, list):
+    sys.exit(1)
+for item in data:
+    if item.get("type") == "file":
+        print(item["name"])
+PY
+    rm -f "$response_path"
 }
 
 # Prints the resolved installation plan from the staged payload.
