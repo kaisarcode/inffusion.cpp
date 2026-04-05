@@ -12,6 +12,7 @@
 #include "pal.h"
 
 #include <errno.h>
+#include <ggml-backend.h>
 #include <limits.h>
 #include <stable-diffusion.h>
 #include <stdbool.h>
@@ -27,6 +28,7 @@
 #include <direct.h>
 #include <process.h>
 #else
+#include <dlfcn.h>
 #include <unistd.h>
 #endif
 
@@ -47,7 +49,7 @@
 #define INFUSSION_DEFAULT_METHOD "euler_a"
 #define INFUSSION_DEFAULT_GUIDANCE 3.5f
 #define INFUSSION_DEFAULT_CLIP_SKIP 1
-#define INFUSSION_VERSION "1.0.0"
+#define INFUSSION_VERSION "1.0.1"
 typedef enum {
     INFUSSION_COMMAND_NONE = 0,
     INFUSSION_COMMAND_INFER
@@ -89,6 +91,38 @@ typedef struct {
 static const char *g_preview_output_path = NULL;
 static bool g_preview_write_failed = false;
 static int g_last_progress_step = -1;
+
+/**
+ * Loads dynamic ggml backends from the same directory as libggml.
+ * @return void
+ */
+static void inffusion_load_backends(void) {
+#ifdef _WIN32
+    ggml_backend_load_all();
+#else
+    Dl_info info;
+    char path[PATH_MAX];
+    char *slash = NULL;
+
+    memset(&info, 0, sizeof(info));
+    memset(path, 0, sizeof(path));
+    if (dladdr((void *)ggml_backend_load_all_from_path, &info) == 0 || info.dli_fname == NULL) {
+        ggml_backend_load_all();
+        return;
+    }
+    if (snprintf(path, sizeof(path), "%s", info.dli_fname) < 0 || path[0] == '\0') {
+        ggml_backend_load_all();
+        return;
+    }
+    slash = strrchr(path, '/');
+    if (slash == NULL) {
+        ggml_backend_load_all();
+        return;
+    }
+    *slash = '\0';
+    ggml_backend_load_all_from_path(path);
+#endif
+}
 
 /**
  * Resolves the effective model path from CLI or environment.
@@ -727,6 +761,7 @@ static int inffusion_run_infer(const inffusion_config *config) {
     ctx_params.flash_attn = config->flash_attn;
     ctx_params.diffusion_flash_attn = config->flash_attn;
 
+    inffusion_load_backends();
     ctx = new_sd_ctx(&ctx_params);
     if (!ctx) {
         free(prompt);

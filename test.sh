@@ -41,9 +41,9 @@ test_setup() {
     export INFFUSION_BIN="$APP_ROOT/bin/$ARCH/inffusion$EXT"
     [ -x "$INFFUSION_BIN" ] || fail "Binary not found at $INFFUSION_BIN."
     VERSION_OUT=$("$INFFUSION_BIN" --version)
-    [ "$VERSION_OUT" = "inffusion 1.0.0" ] || fail "Direct binary runtime resolution failed."
+    [ "$VERSION_OUT" = "inffusion 1.0.1" ] || fail "Direct binary runtime resolution failed."
     if [ "$(uname -s)" = "Linux" ]; then
-        export LD_LIBRARY_PATH="$APP_ROOT/lib/obj/stable-diffusion.cpp/$ARCH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+        export LD_LIBRARY_PATH="$APP_ROOT/lib/obj/stable-diffusion.cpp/$ARCH:$APP_ROOT/lib/obj/ggml/$ARCH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
         if ldd "$INFFUSION_BIN" | grep -q 'not found'; then
             ldd "$INFFUSION_BIN"
             fail "Shared runtime dependencies are missing."
@@ -64,9 +64,9 @@ test_general() {
     pass "General: Help output verified."
 
     VERSION_OUT=$("$INFFUSION_BIN" --version)
-    [ "$VERSION_OUT" = "inffusion 1.0.0" ] || fail "Version output failed."
+    [ "$VERSION_OUT" = "inffusion 1.0.1" ] || fail "Version output failed."
     VERSION_OUT=$("$INFFUSION_BIN" infer --version)
-    [ "$VERSION_OUT" = "inffusion 1.0.0" ] || fail "Command-level version output failed."
+    [ "$VERSION_OUT" = "inffusion 1.0.1" ] || fail "Command-level version output failed."
     pass "General: Version output verified."
 
     if "$INFFUSION_BIN" >/dev/null 2>&1; then fail "Missing command should fail."; fi

@@ -19,7 +19,7 @@
 
 #define KC_INSTALLER_TITLE "inffusion installer"
 #define KC_INSTALL_ROOT_DEFAULT "C:\\Program Files\\KaisarCode"
-#define KC_REPO_ROOT "https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0"
+#define KC_REPO_ROOT "https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.1"
 #define KC_MAX_FILES 16
 
 struct kc_file_entry {
@@ -36,6 +36,9 @@ struct kc_config {
 static const struct kc_file_entry KC_FILES[] = {
     { KC_REPO_ROOT "/bin/win64/inffusion.exe", "bin\\inffusion.exe" },
     { KC_REPO_ROOT "/lib/obj/stable-diffusion.cpp/win64/libstable-diffusion.dll", "win64\\libstable-diffusion.dll" },
+    { KC_REPO_ROOT "/lib/obj/ggml/win64/ggml-base.dll", "win64\\ggml-base.dll" },
+    { KC_REPO_ROOT "/lib/obj/ggml/win64/ggml-cpu.dll", "win64\\ggml-cpu.dll" },
+    { KC_REPO_ROOT "/lib/obj/ggml/win64/ggml.dll", "win64\\ggml.dll" },
     { KC_REPO_ROOT "/lib/obj/ggml/win64/libgcc_s_seh-1.dll", "win64\\libgcc_s_seh-1.dll" },
     { KC_REPO_ROOT "/lib/obj/ggml/win64/libgomp-1.dll", "win64\\libgomp-1.dll" },
     { KC_REPO_ROOT "/lib/obj/ggml/win64/libstdc++-6.dll", "win64\\libstdc++-6.dll" },

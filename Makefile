@@ -15,9 +15,18 @@ TOOLCHAIN_ROOT = /usr/local/share/kaisarcode/toolchains
 SRC = src/main.cpp src/pal.h
 
 INC_DIR = $(DEPS_ROOT)/inc/stable-diffusion.cpp
+GGML_INC = $(DEPS_ROOT)/inc/ggml
 LIB_ROOT = $(DEPS_ROOT)/obj/stable-diffusion.cpp/$(ARCH)
+GGML_LIB = $(DEPS_ROOT)/obj/ggml/$(ARCH)
 SHARED_SD = $(LIB_ROOT)/libstable-diffusion.so
+SHARED_GGML_BASE = $(GGML_LIB)/libggml-base.so
+SHARED_GGML_CPU = $(GGML_LIB)/libggml-cpu.so
+SHARED_GGML = $(GGML_LIB)/libggml.so
+SHARED_GGML_CUDA = $(GGML_LIB)/libggml-cuda.so
 WIN_SD = $(LIB_ROOT)/libstable-diffusion.dll.a
+WIN_GGML_BASE = $(GGML_LIB)/libggml-base.dll.a
+WIN_GGML_CPU = $(GGML_LIB)/libggml-cpu.dll.a
+WIN_GGML = $(GGML_LIB)/libggml.dll.a
 
 CXX_x86_64 = g++
 CXX_aarch64 = aarch64-linux-gnu-g++
@@ -29,12 +38,13 @@ NDK_API = 24
 CXX_arm64_v8a = $(NDK_BIN)/aarch64-linux-android$(NDK_API)-clang++
 CXX_win64 = x86_64-w64-mingw32-g++
 
-CXXFLAGS = -Wall -Wextra -Werror -O3 -std=c++17 -I$(INC_DIR) $(EXTRA_CXXFLAGS)
+CXXFLAGS = -Wall -Wextra -Werror -O3 -std=c++17 -I$(INC_DIR) -I$(GGML_INC) $(EXTRA_CXXFLAGS)
+LDFLAGS_RUNTIME = -Wl,--no-as-needed $(EXTRA_LDFLAGS)
 SYSLIBS_UNIX = -pthread -lm
 SYSLIBS_WIN = -lws2_32 -ladvapi32 -Wl,--no-insert-timestamp
 WININSTALL = -lurlmon -lshell32 -ladvapi32 -lshlwapi -lcomctl32 -Wl,--no-insert-timestamp
-LOCAL_RPATH = -Wl,-rpath,'$$$$ORIGIN/../../lib/obj/stable-diffusion.cpp/$(ARCH)'
-INSTALL_RPATH = -Wl,-rpath,/usr/local/lib/kaisarcode/obj/stable-diffusion.cpp/$(ARCH)
+LOCAL_RPATH = -Wl,-rpath,'$$$$ORIGIN/../../lib/obj/stable-diffusion.cpp/$(ARCH):$$$$ORIGIN/../../lib/obj/ggml/$(ARCH)'
+INSTALL_RPATH = -Wl,-rpath,/usr/local/lib/kaisarcode/obj/stable-diffusion.cpp/$(ARCH):/usr/local/lib/kaisarcode/obj/ggml/$(ARCH)
 
 .PHONY: all clean build_arch x86_64 aarch64 arm64-v8a win64
 
@@ -72,8 +82,8 @@ uninstall.exe: $(UNINSTALLER_SRC)
 
 build_arch:
 	mkdir -p $(BIN_ROOT)/$(ARCH)
-	$(eval UNIX_DEPS = $(SHARED_SD))
-	$(eval WIN_DEPS = $(WIN_SD))
+	$(eval UNIX_DEPS = $(SHARED_SD) $(SHARED_GGML) $(SHARED_GGML_CPU) $(SHARED_GGML_BASE) $(if $(wildcard $(SHARED_GGML_CUDA)),$(SHARED_GGML_CUDA),))
+	$(eval WIN_DEPS = $(WIN_SD) $(WIN_GGML) $(WIN_GGML_CPU) $(WIN_GGML_BASE))
 	$(eval DEPS = $(if $(findstring win64,$(ARCH)),$(WIN_DEPS),$(UNIX_DEPS)))
 	$(eval RPATH_FLAGS = $(if $(findstring win64,$(ARCH)),,$(LOCAL_RPATH) $(INSTALL_RPATH)))
 	@for dep in $(DEPS); do \
@@ -81,7 +91,7 @@ build_arch:
 	done
 	$(eval OBJS = $(BIN_ROOT)/$(ARCH)/main.o)
 	$(MAKE) $(OBJS) ARCH=$(ARCH) CXX="$(CXX)" EXT="$(EXT)" EXTRA_CXXFLAGS="$(EXTRA_CXXFLAGS)"
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(BIN_ROOT)/$(ARCH)/$(NAME)$(EXT) $(if $(findstring win64,$(ARCH)),$(WIN_DEPS) $(SYSLIBS_WIN),$(UNIX_DEPS) $(SYSLIBS_UNIX)) $(RPATH_FLAGS)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(BIN_ROOT)/$(ARCH)/$(NAME)$(EXT) $(LDFLAGS_RUNTIME) $(if $(findstring win64,$(ARCH)),$(WIN_DEPS) $(SYSLIBS_WIN),$(UNIX_DEPS) $(SYSLIBS_UNIX)) $(RPATH_FLAGS)
 
 $(BIN_ROOT)/$(ARCH)/%.o: src/%.cpp
 	mkdir -p $(BIN_ROOT)/$(ARCH)
