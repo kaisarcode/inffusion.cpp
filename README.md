@@ -105,26 +105,27 @@ printf 'A brutalist city at sunset.' | inffusion infer \
 
 Layout:
 - `lib/inc` contains the headers used by the build
-- `lib/obj` contains the shared runtime libraries used for the final link on each supported target
+- `lib/obj/stable-diffusion.cpp` contains the core image runtime libraries
+- `lib/obj/ggml` contains the shared tensor/runtime backend libraries
 
 ## Install
 
 Install the current-architecture production binary on Linux:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.1/install.sh | bash
 ```
 
 Remove the installed application on Linux:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0/uninstall.sh | bash
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.1/uninstall.sh | bash
 ```
 
 Remove the installed application plus shared runtime dependencies on Linux:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.0/uninstall.sh | bash -s -- --deps
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.1/uninstall.sh | bash -s -- --deps
 ```
 
 Model files are not installed by `install.sh`. You must provide compatible
