@@ -10,6 +10,7 @@ set -e
 
 APP_ID="inffusion"
 REPO_ID="inffusion.cpp"
+CORE_REPO_REF="master"
 CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/master"
 INSTALLER_URL="${CORE_REPO_ROOT}/install.sh"
 SYS_BIN_DIR="/usr/local/bin"
@@ -106,6 +107,34 @@ download_asset() {
         rm -f "$out"
         fail_unavailable "$url"
     }
+}
+
+# Downloads one Git blob payload as text.
+# @param $1 Blob API URL.
+# @return Writes the decoded blob payload to stdout.
+download_blob_text() {
+    blob_url="$1"
+    command -v python3 >/dev/null 2>&1 || fail "python3 is required."
+    response_path=$(mktemp) || fail "Unable to allocate temporary response file."
+    if ! wget -qO "$response_path" "$blob_url"; then
+        rm -f "$response_path"
+        fail_unavailable "$blob_url"
+    fi
+    python3 - "$response_path" <<'PY'
+import base64
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+content = data.get("content", "")
+encoding = data.get("encoding")
+if encoding != "base64" or not content:
+    sys.exit(1)
+sys.stdout.write(base64.b64decode(content).decode("utf-8"))
+PY
+    rm -f "$response_path"
 }
 
 # Detects the current machine architecture.
@@ -243,14 +272,22 @@ stage_remote_assets() {
 
     mkdir -p "$stage_dir/bin" "$stage_dir/stable-diffusion.cpp/$arch" "$stage_dir/ggml/$arch"
     download_asset "$CORE_REPO_ROOT/bin/$arch/$APP_ID" "$stage_dir/bin/$APP_ID"
-    find_remote_assets "stable-diffusion.cpp" "$arch" | while IFS= read -r asset_name; do
+    find_remote_assets "stable-diffusion.cpp" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name asset_blob_url; do
         [ -n "$asset_name" ] || continue
+        if [ "$asset_mode" = "120000" ]; then
+            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/stable-diffusion.cpp/$arch/$asset_name"
+            continue
+        fi
         download_asset "$CORE_REPO_ROOT/lib/obj/stable-diffusion.cpp/$arch/$asset_name" \
             "$stage_dir/stable-diffusion.cpp/$arch/$asset_name"
     done
-    find_remote_assets "ggml" "$arch" | while IFS= read -r asset_name; do
+    find_remote_assets "ggml" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name asset_blob_url; do
         [ -n "$asset_name" ] || continue
         if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" != true ] && [ "$asset_name" = "libggml-cuda.so" ]; then
+            continue
+        fi
+        if [ "$asset_mode" = "120000" ]; then
+            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/ggml/$arch/$asset_name"
             continue
         fi
         download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/$asset_name" \
@@ -258,14 +295,14 @@ stage_remote_assets() {
     done
 }
 
-# Lists one remote vendor directory using the GitHub contents API.
+# Lists one remote vendor directory using the Git tree API.
 # @param $1 Stack name.
 # @param $2 Architecture name.
-# @return Writes one filename per line.
+# @return Writes mode, filename, and blob URL separated by tabs.
 find_remote_assets() {
     stack="$1"
     arch="$2"
-    api_url="https://api.github.com/repos/kaisarcode/${REPO_ID}/contents/lib/obj/${stack}/${arch}?ref=${RELEASE_TAG}"
+    api_url="https://api.github.com/repos/kaisarcode/${REPO_ID}/git/trees/${CORE_REPO_REF}:lib/obj/${stack}/${arch}"
     command -v python3 >/dev/null 2>&1 || fail "python3 is required."
     response_path=$(mktemp) || fail "Unable to allocate temporary response file."
     if ! wget -qO "$response_path" "$api_url"; then
@@ -279,11 +316,12 @@ import sys
 path = sys.argv[1]
 with open(path, "r", encoding="utf-8") as fh:
     data = json.load(fh)
-if not isinstance(data, list):
+tree = data.get("tree")
+if not isinstance(tree, list):
     sys.exit(1)
-for item in data:
-    if item.get("type") == "file":
-        print(item["name"])
+for item in tree:
+    if item.get("type") == "blob":
+        print(f'{item["mode"]}\t{item["path"]}\t{item["url"]}')
 PY
     rm -f "$response_path"
 }
