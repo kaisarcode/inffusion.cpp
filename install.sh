@@ -10,8 +10,7 @@ set -e
 
 APP_ID="inffusion"
 REPO_ID="inffusion.cpp"
-RELEASE_TAG="v1.0.1"
-CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/${RELEASE_TAG}"
+CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/master"
 INSTALLER_URL="${CORE_REPO_ROOT}/install.sh"
 SYS_BIN_DIR="/usr/local/bin"
 SYS_APP_DIR="/usr/local/lib/kaisarcode/apps"
@@ -31,17 +30,39 @@ fail() {
 ensure_root() {
     local installer_path
     local script_name
+    local script_path
+    local script_fd
 
     if [ "$(id -u)" -eq 0 ]; then
         return 0
     fi
     command -v sudo >/dev/null 2>&1 || fail "sudo is required."
-    script_name=$(basename "$0")
+    script_path="${BASH_SOURCE[0]:-$0}"
+    script_name=$(basename "$script_path")
     if [ -f "$0" ] && [ -r "$0" ] && [ "$script_name" != "bash" ] && [ "$script_name" != "sh" ]; then
-        if [ -r /dev/tty ]; then
+        if [ -t 0 ] && [ -r /dev/tty ]; then
             exec sudo bash "$0" "$@" </dev/tty
         fi
         exec sudo bash "$0" "$@"
+    fi
+    if [ -r "$script_path" ] && [ "$script_name" != "bash" ] && [ "$script_name" != "sh" ]; then
+        if [ -t 0 ] && [ -r /dev/tty ]; then
+            exec sudo bash "$script_path" "$@" </dev/tty
+        fi
+        exec sudo bash "$script_path" "$@"
+    fi
+    script_fd="/proc/$$/fd/255"
+    if [ -r "$script_fd" ]; then
+        installer_path=$(mktemp) || fail "Unable to allocate temporary installer."
+        cat "$script_fd" > "$installer_path" || {
+            rm -f "$installer_path"
+            fail "Unable to stage installer payload."
+        }
+        chmod 0700 "$installer_path"
+        if [ -t 0 ] && [ -r /dev/tty ]; then
+            exec sudo bash "$installer_path" "$@" </dev/tty
+        fi
+        exec sudo bash "$installer_path" "$@"
     fi
     command -v wget >/dev/null 2>&1 || fail "wget is required."
     installer_path=$(mktemp) || fail "Unable to allocate temporary installer."
@@ -50,7 +71,7 @@ ensure_root() {
         fail "Unable to download installer payload."
     fi
     chmod 0700 "$installer_path"
-    if [ -r /dev/tty ]; then
+    if [ -t 0 ] && [ -r /dev/tty ]; then
         exec sudo bash "$installer_path" "$@" </dev/tty
     fi
     exec sudo bash "$installer_path" "$@"

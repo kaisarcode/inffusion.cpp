@@ -10,8 +10,7 @@ set -e
 
 APP_ID="inffusion"
 REPO_ID="inffusion.cpp"
-RELEASE_TAG="v1.0.1"
-CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/${RELEASE_TAG}"
+CORE_REPO_ROOT="https://raw.githubusercontent.com/kaisarcode/${REPO_ID}/master"
 UNINSTALLER_URL="${CORE_REPO_ROOT}/uninstall.sh"
 SYS_BIN_DIR="/usr/local/bin"
 SYS_APP_DIR="/usr/local/lib/kaisarcode/apps"
@@ -31,17 +30,39 @@ fail() {
 ensure_root() {
     local uninstaller_path
     local script_name
+    local script_path
+    local script_fd
 
     if [ "$(id -u)" -eq 0 ]; then
         return 0
     fi
     command -v sudo >/dev/null 2>&1 || fail "sudo is required."
-    script_name=$(basename "$0")
+    script_path="${BASH_SOURCE[0]:-$0}"
+    script_name=$(basename "$script_path")
     if [ -f "$0" ] && [ -r "$0" ] && [ "$script_name" != "bash" ] && [ "$script_name" != "sh" ]; then
-        if [ -r /dev/tty ]; then
+        if [ -t 0 ] && [ -r /dev/tty ]; then
             exec sudo bash "$0" "$@" </dev/tty
         fi
         exec sudo bash "$0" "$@"
+    fi
+    if [ -r "$script_path" ] && [ "$script_name" != "bash" ] && [ "$script_name" != "sh" ]; then
+        if [ -t 0 ] && [ -r /dev/tty ]; then
+            exec sudo bash "$script_path" "$@" </dev/tty
+        fi
+        exec sudo bash "$script_path" "$@"
+    fi
+    script_fd="/proc/$$/fd/255"
+    if [ -r "$script_fd" ]; then
+        uninstaller_path=$(mktemp) || fail "Unable to allocate temporary uninstaller."
+        cat "$script_fd" > "$uninstaller_path" || {
+            rm -f "$uninstaller_path"
+            fail "Unable to stage uninstaller payload."
+        }
+        chmod 0700 "$uninstaller_path"
+        if [ -t 0 ] && [ -r /dev/tty ]; then
+            exec sudo bash "$uninstaller_path" "$@" </dev/tty
+        fi
+        exec sudo bash "$uninstaller_path" "$@"
     fi
     command -v wget >/dev/null 2>&1 || fail "wget is required."
     uninstaller_path=$(mktemp) || fail "Unable to allocate temporary uninstaller."
@@ -50,7 +71,7 @@ ensure_root() {
         fail "Unable to download uninstaller payload."
     fi
     chmod 0700 "$uninstaller_path"
-    if [ -r /dev/tty ]; then
+    if [ -t 0 ] && [ -r /dev/tty ]; then
         exec sudo bash "$uninstaller_path" "$@" </dev/tty
     fi
     exec sudo bash "$uninstaller_path" "$@"

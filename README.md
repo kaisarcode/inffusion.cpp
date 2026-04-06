@@ -113,19 +113,19 @@ Layout:
 Install the current-architecture production binary on Linux:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.1/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/master/install.sh | bash
 ```
 
 Remove the installed application on Linux:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.1/uninstall.sh | bash
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/master/uninstall.sh | bash
 ```
 
 Remove the installed application plus shared runtime dependencies on Linux:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/v1.0.1/uninstall.sh | bash -s -- --deps
+wget -qO- https://raw.githubusercontent.com/kaisarcode/inffusion.cpp/master/uninstall.sh | bash -s -- --deps
 ```
 
 Model files are not installed by `install.sh`. You must provide compatible
