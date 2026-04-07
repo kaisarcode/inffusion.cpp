@@ -167,8 +167,8 @@ has_cuda_runtime() {
 install_runtime_binary() {
     src_dir="$1"
     arch="$2"
-    mkdir -p "$SYS_APP_DIR/$APP_ID/$arch"
-    install -m 0755 "$src_dir/$APP_ID" "$SYS_APP_DIR/$APP_ID/$arch/$APP_ID"
+    mkdir -p "$SYS_APP_DIR/$APP_ID/$arch/linux"
+    install -m 0755 "$src_dir/$APP_ID" "$SYS_APP_DIR/$APP_ID/$arch/linux/$APP_ID"
 }
 
 # Installs one runtime dependency payload.
@@ -180,9 +180,9 @@ install_runtime_deps() {
     src_dir="$1"
     stack="$2"
     arch="$3"
-    mkdir -p "$SYS_DEP_DIR/obj/$stack/$arch"
-    find "$SYS_DEP_DIR/obj/$stack/$arch" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-    cp -a "$src_dir/$stack/$arch/." "$SYS_DEP_DIR/obj/$stack/$arch/"
+    mkdir -p "$SYS_DEP_DIR/$stack/$arch/linux"
+    find "$SYS_DEP_DIR/$stack/$arch/linux" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    cp -a "$src_dir/$stack/$arch/linux/." "$SYS_DEP_DIR/$stack/$arch/linux/"
 }
 
 # Installs one runtime wrapper in the global bin directory.
@@ -195,8 +195,8 @@ install_runtime_wrapper() {
     printf '%s\n' \
         '#!/bin/bash' \
         'set -e' \
-        "export LD_LIBRARY_PATH=\"$SYS_DEP_DIR/obj/stable-diffusion.cpp/$arch:$SYS_DEP_DIR/obj/ggml/$arch\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}\"" \
-        "exec \"$SYS_APP_DIR/$APP_ID/$arch/$APP_ID\" \"\$@\"" \
+        "export LD_LIBRARY_PATH=\"$SYS_DEP_DIR/stable-diffusion.cpp/$arch/linux:$SYS_DEP_DIR/ggml/$arch/linux\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}\"" \
+        "exec \"$SYS_APP_DIR/$APP_ID/$arch/linux/$APP_ID\" \"\$@\"" \
         | tee "$wrapper_path" >/dev/null
     chmod 0755 "$wrapper_path"
 }
@@ -252,12 +252,12 @@ stage_local_assets() {
     stage_dir="$2"
     cuda_enabled="$3"
 
-    stage_local_asset "./bin/$arch/$APP_ID" "$stage_dir/bin/$APP_ID"
-    mkdir -p "$stage_dir/stable-diffusion.cpp/$arch" "$stage_dir/ggml/$arch"
-    cp -a "./lib/obj/stable-diffusion.cpp/$arch/." "$stage_dir/stable-diffusion.cpp/$arch/"
-    cp -a "./lib/obj/ggml/$arch/." "$stage_dir/ggml/$arch/"
+    stage_local_asset "./bin/$arch/linux/$APP_ID" "$stage_dir/bin/$APP_ID"
+    mkdir -p "$stage_dir/stable-diffusion.cpp/$arch/linux" "$stage_dir/ggml/$arch/linux"
+    cp -a "./lib/stable-diffusion.cpp/$arch/linux/." "$stage_dir/stable-diffusion.cpp/$arch/linux/"
+    cp -a "./lib/ggml/$arch/linux/." "$stage_dir/ggml/$arch/linux/"
     if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" != true ]; then
-        rm -f "$stage_dir/ggml/$arch/libggml-cuda.so"
+        rm -f "$stage_dir/ggml/$arch/linux/libggml-cuda.so"
     fi
 }
 
@@ -270,16 +270,16 @@ stage_remote_assets() {
     stage_dir="$2"
     cuda_enabled="$3"
 
-    mkdir -p "$stage_dir/bin" "$stage_dir/stable-diffusion.cpp/$arch" "$stage_dir/ggml/$arch"
-    download_asset "$CORE_REPO_ROOT/bin/$arch/$APP_ID" "$stage_dir/bin/$APP_ID"
+    mkdir -p "$stage_dir/bin" "$stage_dir/stable-diffusion.cpp/$arch/linux" "$stage_dir/ggml/$arch/linux"
+    download_asset "$CORE_REPO_ROOT/bin/$arch/linux/$APP_ID" "$stage_dir/bin/$APP_ID"
     find_remote_assets "stable-diffusion.cpp" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name asset_blob_url; do
         [ -n "$asset_name" ] || continue
         if [ "$asset_mode" = "120000" ]; then
-            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/stable-diffusion.cpp/$arch/$asset_name"
+            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/stable-diffusion.cpp/$arch/linux/$asset_name"
             continue
         fi
-        download_asset "$CORE_REPO_ROOT/lib/obj/stable-diffusion.cpp/$arch/$asset_name" \
-            "$stage_dir/stable-diffusion.cpp/$arch/$asset_name"
+        download_asset "$CORE_REPO_ROOT/lib/stable-diffusion.cpp/$arch/linux/$asset_name" \
+            "$stage_dir/stable-diffusion.cpp/$arch/linux/$asset_name"
     done
     find_remote_assets "ggml" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name asset_blob_url; do
         [ -n "$asset_name" ] || continue
@@ -287,11 +287,11 @@ stage_remote_assets() {
             continue
         fi
         if [ "$asset_mode" = "120000" ]; then
-            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/ggml/$arch/$asset_name"
+            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/ggml/$arch/linux/$asset_name"
             continue
         fi
-        download_asset "$CORE_REPO_ROOT/lib/obj/ggml/$arch/$asset_name" \
-            "$stage_dir/ggml/$arch/$asset_name"
+        download_asset "$CORE_REPO_ROOT/lib/ggml/$arch/linux/$asset_name" \
+            "$stage_dir/ggml/$arch/linux/$asset_name"
     done
 }
 
@@ -302,7 +302,7 @@ stage_remote_assets() {
 find_remote_assets() {
     stack="$1"
     arch="$2"
-    api_url="https://api.github.com/repos/kaisarcode/${REPO_ID}/git/trees/${CORE_REPO_REF}:lib/obj/${stack}/${arch}"
+    api_url="https://api.github.com/repos/kaisarcode/${REPO_ID}/git/trees/${CORE_REPO_REF}:lib/${stack}/${arch}/linux"
     command -v python3 >/dev/null 2>&1 || fail "python3 is required."
     response_path=$(mktemp) || fail "Unable to allocate temporary response file."
     if ! wget -qO "$response_path" "$api_url"; then
@@ -355,10 +355,10 @@ print_install_plan() {
         printf "  File: %s (%s)\n" "$asset_name" "$(format_size "$asset_size")"
     done
     printf "  Total size: %s\n" "$(format_size "$total_size")"
-    printf "  Install path: %s/%s/%s/%s\n" "$SYS_APP_DIR" "$APP_ID" "$arch" "$APP_ID"
+    printf "  Install path: %s/%s/%s/linux/%s\n" "$SYS_APP_DIR" "$APP_ID" "$arch" "$APP_ID"
     printf "  Wrapper path: %s/%s\n" "$SYS_BIN_DIR" "$APP_ID"
-    printf "  stable-diffusion.cpp path: %s/obj/stable-diffusion.cpp/%s\n" "$SYS_DEP_DIR" "$arch"
-    printf "  ggml path: %s/obj/ggml/%s\n" "$SYS_DEP_DIR" "$arch"
+    printf "  stable-diffusion.cpp path: %s/stable-diffusion.cpp/%s/linux\n" "$SYS_DEP_DIR" "$arch"
+    printf "  ggml path: %s/ggml/%s/linux\n" "$SYS_DEP_DIR" "$arch"
 }
 
 # Confirms the installation plan with the user.
@@ -403,8 +403,8 @@ main() {
     trap 'rm -rf "$stage_dir"' EXIT
 
     if [ "$local_mode" = true ]; then
-        [ -d "./lib/obj/stable-diffusion.cpp/$arch" ] || fail "Local stable-diffusion.cpp dependencies not found for $arch."
-        [ -d "./lib/obj/ggml/$arch" ] || fail "Local ggml dependencies not found for $arch."
+        [ -d "./lib/stable-diffusion.cpp/$arch/linux" ] || fail "Local stable-diffusion.cpp dependencies not found for $arch."
+        [ -d "./lib/ggml/$arch/linux" ] || fail "Local ggml dependencies not found for $arch."
         stage_local_assets "$arch" "$stage_dir" "$cuda_enabled"
     else
         stage_remote_assets "$arch" "$stage_dir" "$cuda_enabled"

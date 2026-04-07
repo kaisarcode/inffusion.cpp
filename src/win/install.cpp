@@ -34,15 +34,15 @@ struct kc_config {
 };
 
 static const struct kc_file_entry KC_FILES[] = {
-    { KC_REPO_ROOT "/bin/win64/inffusion.exe", "bin\\inffusion.exe" },
-    { KC_REPO_ROOT "/lib/obj/stable-diffusion.cpp/win64/libstable-diffusion.dll", "win64\\libstable-diffusion.dll" },
-    { KC_REPO_ROOT "/lib/obj/ggml/win64/ggml-base.dll", "win64\\ggml-base.dll" },
-    { KC_REPO_ROOT "/lib/obj/ggml/win64/ggml-cpu.dll", "win64\\ggml-cpu.dll" },
-    { KC_REPO_ROOT "/lib/obj/ggml/win64/ggml.dll", "win64\\ggml.dll" },
-    { KC_REPO_ROOT "/lib/obj/ggml/win64/libgcc_s_seh-1.dll", "win64\\libgcc_s_seh-1.dll" },
-    { KC_REPO_ROOT "/lib/obj/ggml/win64/libgomp-1.dll", "win64\\libgomp-1.dll" },
-    { KC_REPO_ROOT "/lib/obj/ggml/win64/libstdc++-6.dll", "win64\\libstdc++-6.dll" },
-    { KC_REPO_ROOT "/lib/obj/ggml/win64/libwinpthread-1.dll", "win64\\libwinpthread-1.dll" }
+    { KC_REPO_ROOT "/bin/x86_64/windows/inffusion.exe", "bin\\inffusion.exe" },
+    { KC_REPO_ROOT "/lib/stable-diffusion.cpp/x86_64/windows/libstable-diffusion.dll.a", "x86_64\\windows\\libstable-diffusion.dll.a" },
+    { KC_REPO_ROOT "/lib/ggml/x86_64/windows/libggml-base.dll.a", "x86_64\\windows\\libggml-base.dll.a" },
+    { KC_REPO_ROOT "/lib/ggml/x86_64/windows/libggml-cpu.dll.a", "x86_64\\windows\\libggml-cpu.dll.a" },
+    { KC_REPO_ROOT "/lib/ggml/x86_64/windows/libggml.dll.a", "x86_64\\windows\\libggml.dll.a" },
+    { KC_REPO_ROOT "/lib/ggml/x86_64/windows/libgcc_s_seh-1.dll", "x86_64\\windows\\libgcc_s_seh-1.dll" },
+    { KC_REPO_ROOT "/lib/ggml/x86_64/windows/libgomp-1.dll", "x86_64\\windows\\libgomp-1.dll" },
+    { KC_REPO_ROOT "/lib/ggml/x86_64/windows/libstdc++-6.dll", "x86_64\\windows\\libstdc++-6.dll" },
+    { KC_REPO_ROOT "/lib/ggml/x86_64/windows/libwinpthread-1.dll", "x86_64\\windows\\libwinpthread-1.dll" }
 };
 
 /**
