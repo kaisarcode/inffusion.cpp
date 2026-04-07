@@ -32,7 +32,7 @@ SYSLIBS_UNIX = -pthread -lm
 SYSLIBS_WIN = -lws2_32 -ladvapi32 -Wl,--no-insert-timestamp
 WININSTALL = -lurlmon -lshell32 -ladvapi32 -lshlwapi -lcomctl32 -Wl,--no-insert-timestamp
 LOCAL_RPATH = -Wl,-rpath,'$$$$ORIGIN/../../lib/stable-diffusion.cpp/$(ARCH)/$(PLATFORM):$$$$ORIGIN/../../lib/ggml/$(ARCH)/$(PLATFORM)'
-INSTALL_RPATH = -Wl,-rpath,/usr/local/lib/kaisarcode/stable-diffusion.cpp/$(ARCH)/$(PLATFORM):/usr/local/lib/kaisarcode/ggml/$(ARCH)/$(PLATFORM)
+INSTALL_RPATH = -Wl,-rpath,/usr/local/lib/kaisarcode/obj/stable-diffusion.cpp/$(ARCH):/usr/local/lib/kaisarcode/obj/ggml/$(ARCH)
 
 .PHONY: all clean build_arch x86_64/linux aarch64/linux aarch64/android x86_64/windows
 
@@ -75,9 +75,7 @@ build_arch:
 	$(eval OBJS = $(OBJ_ROOT)/$(ARCH)/$(PLATFORM)/main.o)
 	$(MAKE) $(OBJS) ARCH=$(ARCH) PLATFORM=$(PLATFORM) CXX="$(CXX)" EXT="$(EXT)" EXTRA_CXXFLAGS="$(EXTRA_CXXFLAGS)"
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(BIN_ROOT)/$(ARCH)/$(PLATFORM)/$(NAME)$(EXT) $(LDFLAGS_RUNTIME) $(if $(findstring windows,$(PLATFORM)),$(WIN_DEPS) $(SYSLIBS_WIN),$(UNIX_DEPS) $(SYSLIBS_UNIX)) $(RPATH_FLAGS)
-	@if [ "$(PLATFORM)" != "windows" ] && command -v patchelf >/dev/null 2>&1; then \
-		patchelf --remove-rpath $(BIN_ROOT)/$(ARCH)/$(PLATFORM)/$(NAME)$(EXT) || true; \
-	fi
+
 
 $(OBJ_ROOT)/$(ARCH)/$(PLATFORM)/%.o: src/%.cpp
 	mkdir -p $(OBJ_ROOT)/$(ARCH)/$(PLATFORM)
