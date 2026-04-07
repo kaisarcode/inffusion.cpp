@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [KaisarCode Standards](https://kaisarcode.com).
 
+## [1.0.2] - 2026-04-07
+
+### Changed
+- Standardized the binary output directory layout to use strictly `bin/<arch>/<platform>`.
+- Standardized the object output directory layout to use strictly `obj/<arch>/<platform>`.
+- Flattened the library vendor architecture paths to avoid redundant nested directories (`lib/<proj>/<arch>/<platform>`).
+- Implemented Git LFS tracking for all shared libraries, static libraries, and binaries.
+- Removed legacy architecture root targets (`arm64-v8a` and `win64`).
+
 ## [1.0.1] - 2026-04-05
 
 ### Added

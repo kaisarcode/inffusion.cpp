@@ -45,12 +45,14 @@ test_setup() {
         arm64-v8a) EXT="" ;;
         *) EXT="" ;;
     esac
-    export INFFUSION_BIN="$APP_ROOT/bin/$ARCH/inffusion$EXT"
+    PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+    [ "$PLATFORM" = "linux" ] || PLATFORM="windows"
+    export INFFUSION_BIN="$APP_ROOT/bin/$ARCH/$PLATFORM/inffusion$EXT"
     [ -x "$INFFUSION_BIN" ] || fail "Binary not found at $INFFUSION_BIN."
     VERSION_OUT=$("$INFFUSION_BIN" --version)
     is_valid_version_output "$VERSION_OUT" || fail "Direct binary runtime resolution failed."
     if [ "$(uname -s)" = "Linux" ]; then
-        export LD_LIBRARY_PATH="$APP_ROOT/lib/obj/stable-diffusion.cpp/$ARCH:$APP_ROOT/lib/obj/ggml/$ARCH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+        export LD_LIBRARY_PATH="$APP_ROOT/lib/stable-diffusion.cpp/$ARCH/linux:$APP_ROOT/lib/ggml/$ARCH/linux${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
         if ldd "$INFFUSION_BIN" | grep -q 'not found'; then
             ldd "$INFFUSION_BIN"
             fail "Shared runtime dependencies are missing."

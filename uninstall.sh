@@ -138,8 +138,8 @@ print_uninstall_plan() {
     printf "  Wrapper path: %s/%s\n" "$SYS_BIN_DIR" "$APP_ID"
     printf "  App path: %s/%s/%s\n" "$SYS_APP_DIR" "$APP_ID" "$arch"
     if [ "$remove_deps" = true ]; then
-        printf "  stable-diffusion.cpp path: %s/obj/stable-diffusion.cpp/%s\n" "$SYS_DEP_DIR" "$arch"
-        printf "  ggml path: %s/obj/ggml/%s\n" "$SYS_DEP_DIR" "$arch"
+        printf "  stable-diffusion.cpp path: %s/stable-diffusion.cpp/%s/linux\n" "$SYS_DEP_DIR" "$arch"
+        printf "  ggml path: %s/ggml/%s/linux\n" "$SYS_DEP_DIR" "$arch"
     fi
 }
 
@@ -160,10 +160,12 @@ uninstall_app() {
 uninstall_deps() {
     arch="$1"
 
-    remove_if_exists "$SYS_DEP_DIR/obj/stable-diffusion.cpp/$arch"
-    remove_if_exists "$SYS_DEP_DIR/obj/ggml/$arch"
-    remove_dir_if_empty "$SYS_DEP_DIR/obj/stable-diffusion.cpp"
-    remove_dir_if_empty "$SYS_DEP_DIR/obj/ggml"
+    remove_if_exists "$SYS_DEP_DIR/stable-diffusion.cpp/$arch/linux"
+    remove_if_exists "$SYS_DEP_DIR/ggml/$arch/linux"
+    remove_dir_if_empty "$SYS_DEP_DIR/stable-diffusion.cpp/$arch"
+    remove_dir_if_empty "$SYS_DEP_DIR/ggml/$arch"
+    remove_dir_if_empty "$SYS_DEP_DIR/stable-diffusion.cpp"
+    remove_dir_if_empty "$SYS_DEP_DIR/ggml"
     remove_dir_if_empty "$SYS_DEP_DIR/obj"
 }
 

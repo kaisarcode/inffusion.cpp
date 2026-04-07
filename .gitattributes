@@ -1,1 +1,9 @@
-lib/obj/** filter=lfs diff=lfs merge=lfs -text
+# Binaries in the core bin directory
+bin/** filter=lfs diff=lfs merge=lfs -text
+*.exe filter=lfs diff=lfs merge=lfs -text
+
+# Libraries in lib/
+lib/**/*.so* filter=lfs diff=lfs merge=lfs -text
+lib/**/*.a filter=lfs diff=lfs merge=lfs -text
+lib/**/*.dll filter=lfs diff=lfs merge=lfs -text
+lib/**/*.dll.a filter=lfs diff=lfs merge=lfs -text
