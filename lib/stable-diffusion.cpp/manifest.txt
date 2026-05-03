@@ -1,0 +1,12 @@
+f miniz.h
+f thirdparty/stb_image.h
+f thirdparty/stb_image_write.h
+f httplib.h
+f x86_64/windows/libstable-diffusion.dll.a
+f x86_64/windows/libstable-diffusion.dll
+f x86_64/linux/libstable-diffusion.so
+f stable-diffusion.h
+f aarch64/linux/libstable-diffusion.so
+f aarch64/android/libstable-diffusion.so
+f zip.h
+f darts.h

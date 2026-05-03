@@ -65,10 +65,10 @@ build_arch:
 	mkdir -p $(OBJ_ROOT)/$(ARCH)/$(PLATFORM)
 	$(eval SD_LIB = $(DEPS_ROOT)/stable-diffusion.cpp/$(ARCH)/$(PLATFORM))
 	$(eval GGML_LIB = $(DEPS_ROOT)/ggml/$(ARCH)/$(PLATFORM))
-	$(eval UNIX_DEPS = $(SD_LIB)/libstable-diffusion.so $(GGML_LIB)/libggml.so $(GGML_LIB)/libggml-cpu.so $(GGML_LIB)/libggml-base.so $(if $(wildcard $(GGML_LIB)/libggml-cuda.so),$(GGML_LIB)/libggml-cuda.so,))
+	$(eval UNIX_DEPS = $(SD_LIB)/libstable-diffusion.so $(GGML_LIB)/libggml.so $(GGML_LIB)/libggml-cpu.so $(GGML_LIB)/libggml-base.so)
 	$(eval WIN_DEPS = $(SD_LIB)/libstable-diffusion.dll.a $(GGML_LIB)/libggml.dll.a $(GGML_LIB)/libggml-cpu.dll.a $(GGML_LIB)/libggml-base.dll.a)
 	$(eval DEPS = $(if $(findstring windows,$(PLATFORM)),$(WIN_DEPS),$(UNIX_DEPS)))
-	$(eval RPATH_FLAGS = $(if $(findstring windows,$(PLATFORM)),,$(LOCAL_RPATH) $(INSTALL_RPATH)))
+	$(eval RPATH_FLAGS = $(if $(findstring windows,$(PLATFORM)),,$(LOCAL_RPATH) $(INSTALL_RPATH) -Wl,-rpath-link,$(SD_LIB):$(GGML_LIB)))
 	@for dep in $(DEPS); do \
 		test -f "$$dep" || { echo "[ERROR] Missing $$dep."; exit 1; }; \
 	done

@@ -7,6 +7,7 @@
 # License: GNU GPL v3.0
 
 set -e
+set -o pipefail
 
 APP_ID="inffusion"
 REPO_ID="inffusion.cpp"
@@ -110,31 +111,13 @@ download_asset() {
 }
 
 # Downloads one Git blob payload as text.
-# @param $1 Blob API URL.
-# @return Writes the decoded blob payload to stdout.
+# @param $1 Stack name.
+# @param $2 Asset path relative to stack root.
+# @return Writes the blob payload to stdout.
 download_blob_text() {
-    blob_url="$1"
-    command -v python3 >/dev/null 2>&1 || fail "python3 is required."
-    response_path=$(mktemp) || fail "Unable to allocate temporary response file."
-    if ! wget -qO "$response_path" "$blob_url"; then
-        rm -f "$response_path"
-        fail_unavailable "$blob_url"
-    fi
-    python3 - "$response_path" <<'PY'
-import base64
-import json
-import sys
-
-path = sys.argv[1]
-with open(path, "r", encoding="utf-8") as fh:
-    data = json.load(fh)
-content = data.get("content", "")
-encoding = data.get("encoding")
-if encoding != "base64" or not content:
-    sys.exit(1)
-sys.stdout.write(base64.b64decode(content).decode("utf-8"))
-PY
-    rm -f "$response_path"
+    local stack="$1"
+    local asset_path="$2"
+    wget -qO- "${CORE_REPO_ROOT}/lib/${stack}/${asset_path}"
 }
 
 # Detects the current machine architecture.
@@ -152,6 +135,11 @@ detect_arch() {
 # @return 0 when CUDA runtime is available.
 has_cuda_runtime() {
     if ! command -v ldconfig >/dev/null 2>&1; then
+        if [ -x /sbin/ldconfig ]; then
+            /sbin/ldconfig -p 2>/dev/null | grep -q 'libcuda\.so\.1' && \
+            /sbin/ldconfig -p 2>/dev/null | grep -q 'libcudart\.so\.12' && \
+            /sbin/ldconfig -p 2>/dev/null | grep -q 'libcublas\.so\.12' && return 0
+        fi
         return 1
     fi
     ldconfig -p 2>/dev/null | grep -q 'libcuda\.so\.1' || return 1
@@ -256,9 +244,6 @@ stage_local_assets() {
     mkdir -p "$stage_dir/stable-diffusion.cpp/$arch/linux" "$stage_dir/ggml/$arch/linux"
     cp -a "./lib/stable-diffusion.cpp/$arch/linux/." "$stage_dir/stable-diffusion.cpp/$arch/linux/"
     cp -a "./lib/ggml/$arch/linux/." "$stage_dir/ggml/$arch/linux/"
-    if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" != true ]; then
-        rm -f "$stage_dir/ggml/$arch/linux/libggml-cuda.so"
-    fi
 }
 
 # Downloads remote assets into a staging directory.
@@ -272,22 +257,19 @@ stage_remote_assets() {
 
     mkdir -p "$stage_dir/bin" "$stage_dir/stable-diffusion.cpp/$arch/linux" "$stage_dir/ggml/$arch/linux"
     download_asset "$CORE_REPO_ROOT/bin/$arch/linux/$APP_ID" "$stage_dir/bin/$APP_ID"
-    find_remote_assets "stable-diffusion.cpp" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name asset_blob_url; do
+    find_remote_assets "stable-diffusion.cpp" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name; do
         [ -n "$asset_name" ] || continue
         if [ "$asset_mode" = "120000" ]; then
-            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/stable-diffusion.cpp/$arch/linux/$asset_name"
+            ln -s "$(download_blob_text "stable-diffusion.cpp" "$arch/linux/$asset_name")" "$stage_dir/stable-diffusion.cpp/$arch/linux/$asset_name"
             continue
         fi
         download_asset "$CORE_REPO_ROOT/lib/stable-diffusion.cpp/$arch/linux/$asset_name" \
             "$stage_dir/stable-diffusion.cpp/$arch/linux/$asset_name"
     done
-    find_remote_assets "ggml" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name asset_blob_url; do
+    find_remote_assets "ggml" "$arch" | while IFS="$(printf '\t')" read -r asset_mode asset_name; do
         [ -n "$asset_name" ] || continue
-        if [ "$arch" = "x86_64" ] && [ "$cuda_enabled" != true ] && [ "$asset_name" = "libggml-cuda.so" ]; then
-            continue
-        fi
         if [ "$asset_mode" = "120000" ]; then
-            ln -s "$(download_blob_text "$asset_blob_url")" "$stage_dir/ggml/$arch/linux/$asset_name"
+            ln -s "$(download_blob_text "ggml" "$arch/linux/$asset_name")" "$stage_dir/ggml/$arch/linux/$asset_name"
             continue
         fi
         download_asset "$CORE_REPO_ROOT/lib/ggml/$arch/linux/$asset_name" \
@@ -295,35 +277,30 @@ stage_remote_assets() {
     done
 }
 
-# Lists one remote vendor directory using the Git tree API.
+# Lists one remote vendor directory using a manifest file.
 # @param $1 Stack name.
 # @param $2 Architecture name.
-# @return Writes mode, filename, and blob URL separated by tabs.
+# @return Writes mode and filename separated by tabs.
 find_remote_assets() {
-    stack="$1"
-    arch="$2"
-    api_url="https://api.github.com/repos/kaisarcode/${REPO_ID}/git/trees/${CORE_REPO_REF}:lib/${stack}/${arch}/linux"
-    command -v python3 >/dev/null 2>&1 || fail "python3 is required."
-    response_path=$(mktemp) || fail "Unable to allocate temporary response file."
-    if ! wget -qO "$response_path" "$api_url"; then
-        rm -f "$response_path"
-        fail_unavailable "$api_url"
+    local stack="$1"
+    local arch="$2"
+    local manifest_url="${CORE_REPO_ROOT}/lib/${stack}/manifest.txt"
+    local manifest_path
+    manifest_path=$(mktemp) || fail "Unable to allocate temporary manifest file."
+    if ! wget -qO "$manifest_path" "$manifest_url"; then
+        rm -f "$manifest_path"
+        fail_unavailable "$manifest_url"
     fi
-    python3 - "$response_path" <<'PY'
-import json
-import sys
-
-path = sys.argv[1]
-with open(path, "r", encoding="utf-8") as fh:
-    data = json.load(fh)
-tree = data.get("tree")
-if not isinstance(tree, list):
-    sys.exit(1)
-for item in tree:
-    if item.get("type") == "blob":
-        print(f'{item["mode"]}\t{item["path"]}\t{item["url"]}')
-PY
-    rm -f "$response_path"
+    # Manifest format: <type> <path>
+    # Type: f (file), l (link)
+    # Output: mode (100644 or 120000) and filename
+    grep "^[fl] ${arch}/linux/" "$manifest_path" | while read -r type path; do
+        mode="100644"
+        [ "$type" = "l" ] && mode="120000"
+        name=$(basename "$path")
+        printf "%s\t%s\n" "$mode" "$name"
+    done
+    rm -f "$manifest_path"
 }
 
 # Prints the resolved installation plan from the staged payload.
@@ -365,10 +342,14 @@ print_install_plan() {
 # @return 0 on approval.
 confirm_install() {
     local answer
-
-    [ -r /dev/tty ] || fail "Interactive confirmation requires a tty."
-    printf "Continue? [Y/n] " >/dev/tty
-    IFS= read -r answer </dev/tty || fail "Unable to read confirmation."
+    if [ -t 0 ]; then
+        printf "Continue? [Y/n] "
+        IFS= read -r answer || fail "Unable to read confirmation."
+    else
+        # Fallback for non-interactive environments
+        printf "Non-interactive environment detected. Continuing.\n"
+        return 0
+    fi
     case "$answer" in
         ""|Y|y|yes|YES) return 0 ;;
         *) fail "Installation cancelled." ;;

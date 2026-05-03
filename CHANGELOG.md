@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [KaisarCode Standards](https://kaisarcode.com).
 
+## [1.0.3] - 2026-05-03
+
+### Added
+- Implemented **Manifest-based discovery** in `install.sh`, eliminating dependency on GitHub Tree API and its associated rate limits.
+- Added `manifest.txt` files for `stable-diffusion.cpp` and `ggml` vendor stacks to ensure deterministic and API-free installation.
+- Added `set -o pipefail` to the installer to ensure robust error detection across shell pipelines.
+
+### Changed
+- Removed `python3` requirement from the production installation flow.
+- Improved `has_cuda_runtime` detection to probe `/sbin/ldconfig` on systems where it is not in the user's `PATH`.
+- Optimized the installer to support non-interactive environments (CI/containers) by making TTY checks optional.
+- Updated `Makefile` with `-Wl,-rpath-link` to correctly resolve secondary shared library dependencies during the link stage.
+- Refactored `Makefile` to link against `libggml-cuda.so` dynamically at runtime, allowing the project to be built in environments without the CUDA toolkit.
+
 ## [1.0.2] - 2026-04-07
 
 ### Changed
